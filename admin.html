@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel</title>
+
+    <!-- XLSX -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <style>
+      body {
+  font-family: 'Poppins', Arial, sans-serif;
+  padding: 20px;
+  background: linear-gradient(135deg, #ffe4ec, #ffd6e7);
+}
+
+/* Judul */
+h2 {
+  margin-bottom: 20px;
+  color: #d63384;
+  text-align: center;
+}
+
+/* Button umum */
+button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: 500;
+}
+
+/* Button export */
+.btn-export {
+  background: linear-gradient(135deg, #ff4da6, #ff80bf);
+  color: white;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 10px rgba(255, 77, 166, 0.3);
+}
+
+.btn-export:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #e60073, #ff66b2);
+}
+
+/* Button delete */
+.btn-delete {
+  background: linear-gradient(135deg, #ff1a75, #ff4da6);
+  color: white;
+  box-shadow: 0 4px 10px rgba(255, 0, 100, 0.3);
+}
+
+.btn-delete:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #cc0052, #ff3385);
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+
+/* Header */
+th {
+  background: linear-gradient(135deg, #ff4da6, #ff80bf);
+  color: white;
+  padding: 12px;
+}
+
+/* Isi table */
+td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Hover row */
+tr:hover {
+  background: #ffe6f0;
+}
+
+/* Gambar */
+.ktp-img {
+  width: 120px;
+  border-radius: 10px;
+  border: 2px solid #ff99cc;
+  transition: 0.3s;
+}
+
+.ktp-img:hover {
+  transform: scale(1.05);
+}
+
+/* No image */
+.no-image {
+  color: #999;
+  font-size: 12px;
+  font-style: italic;
+}
+    </style>
+
+    <script type="module">
+
+      import { db, auth } from "./config-firebase.js";
+
+      import {
+        ref,
+        onValue,
+        remove,
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+      import {
+        onAuthStateChanged
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+      let dataCache = [];
+
+      // =========================
+      // AUTH CHECK
+      // =========================
+
+      onAuthStateChanged(auth, (user) => {
+
+        if (!user) {
+          window.location.href = "login.html";
+        }
+
+      });
+
+      const tableBody = document.getElementById("table-body");
+
+      // =========================
+      // GET DATA FIREBASE
+      // =========================
+
+      onValue(ref(db, "visitorBookings"), (snap) => {
+
+        dataCache = [];
+
+        tableBody.innerHTML = "";
+
+        snap.forEach((child) => {
+
+          const d = child.val();
+          const key = child.key;
+
+          // =========================
+          // DATA UNTUK EXPORT EXCEL
+          // =========================
+
+          dataCache.push({
+            nama: d.nama || "",
+            company: d.company || "",
+            email: d.email || "",
+            phone: d.phone || "",
+            dept: d.dept || "",
+            host: d.host || "",
+            date: d.date || "",
+            time_start: d.time_start || "",
+            time_end: d.time_end || ""
+          });
+
+          // =========================
+          // TABEL
+          // =========================
+
+          tableBody.innerHTML += `
+
+            <tr>
+
+              <td>${d.nama || ""}</td>
+
+              <td>${d.company || ""}</td>
+
+              <td>${d.email || ""}</td>
+
+              <td>${d.phone || ""}</td>
+
+              <td>${d.dept || ""}</td>
+
+              <td>${d.host || ""}</td>
+
+              <td>${d.date || ""}</td>
+
+              <td>${d.time_start || ""} - ${d.time_end || ""}</td>
+
+              <td>
+
+                ${
+                  d.ktpImage
+
+                  ? `
+                    <img
+                      src="${d.ktpImage}"
+                      class="ktp-img"
+                    >
+                  `
+
+                  : `<span class="no-image">No Image</span>`
+                }
+
+              </td>
+
+              <td>
+                <button
+                  class="btn-delete"
+                  onclick="del('${key}')"
+                >
+                  Delete
+                </button>
+              </td>
+
+            </tr>
+
+          `;
+        });
+      });
+
+      // =========================
+      // DELETE DATA
+      // =========================
+
+      window.del = function (key) {
+
+        const confirmDelete = confirm(
+          "Yakin ingin menghapus data ini?"
+        );
+
+        if (!confirmDelete) return;
+
+        remove(ref(db, "visitorBookings/" + key));
+
+      };
+
+      // =========================
+      // EXPORT EXCEL
+      // =========================
+
+      window.exportExcel = function () {
+
+        const ws = XLSX.utils.json_to_sheet(dataCache);
+
+        const wb = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(
+          wb,
+          ws,
+          "Bookings"
+        );
+
+        XLSX.writeFile(
+          wb,
+          "bookings.xlsx"
+        );
+
+      };
+
+    </script>
+  </head>
+
+  <body>
+
+    <h2>Admin Panel Visitor</h2>
+
+    <button
+      class="btn-export"
+      onclick="exportExcel()"
+    >
+      Download Excel
+    </button>
+
+    <table>
+
+      <thead>
+
+        <tr>
+
+          <th>Nama</th>
+
+          <th>Company</th>
+
+          <th>Email</th>
+
+          <th>Phone</th>
+
+          <th>Pic</th>
+
+          <th>Keperluan</th>
+
+          <th>Date</th>
+
+          <th>Time</th>
+
+          <th>Foto KTP</th>
+
+          <th>Action</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody id="table-body"></tbody>
+
+    </table>
+
+  </body>
+</html>
